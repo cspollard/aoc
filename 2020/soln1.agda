@@ -3,39 +3,20 @@
 module Soln1 where
 
 open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; foldl; map; reverse)
+open import Data.List using (List; []; _∷_; foldl; map; reverse; _++_; filter)
 open import Data.String using (toList; String)
-open import Data.Nat using (ℕ; _*_; _+_)
+open import Data.Nat using (ℕ; _*_; _+_; _≟_)
 open import Data.Nat.Show using (show)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_; proj₁)
-open import Function using (_∘_; _$_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Function using (_∘_; id)
 open import Data.Maybe using (Maybe; just; nothing)
-open import IO.Primitive using (readFiniteFile; _>>=_; return; IO)
-
-
-module _ {A B : Set} where
-  -- open import Codata.Musical.Notation
-  -- infixl 1 _<$>_ _<*>_
-
-
-  -- _<*>_ : IO (A → B) → IO A → IO B
-  -- mf <*> mx = (♯ mf) >>= λ f → ♯ ((♯ mx) >>= λ x → ♯ return (f x))
-
-
-  -- _<$>_ : (A → B) → IO A → IO B
-  -- f <$> m = return f <*> m
-
-
-  -- sequence : List (IO A) → IO (List A)
-  -- sequence [] = return []
-  -- sequence (c ∷ cs) = _∷_ <$> c <*> cs
-
-
-  -- mapM : (A → IO B) → List A → IO (List B)
-  -- mapM f [] = return []
-  -- mapM f (x ∷ xs) = mapM f xs >>= (return )
+open import IO.Primitive using (IO; readFiniteFile; _>>=_; return)
+open import Category.Applicative using (RawApplicative)
+open import Data.List.Categorical using (applicative)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Nullary using (Dec)
+open import Level using (0ℓ)
 
 
 next-digit : ℕ → ℕ → ℕ
@@ -54,6 +35,10 @@ digit '7' = just 7
 digit '8' = just 8
 digit '9' = just 9
 digit _   = nothing
+
+
+≟2020 : (x : ℕ) → Dec {0ℓ} (x ≡ 2020)
+≟2020 x = x ≟ 2020
 
 
 increment : List ℕ × Maybe ℕ → Maybe ℕ → List ℕ × Maybe ℕ
@@ -82,9 +67,19 @@ module _ where
   mapM' f (x ∷ xs) = f x >>= λ _ → mapM' f xs
 
 
--- {-# NON_TERMINATING #-}
 main : IO ⊤
 main = do
   inputs ← readFiniteFile "input1"
+
   let nums = parse (toList inputs)
-  mapM' (putStrLn ∘ show) nums
+      f1 x y = (x + y , x * y)
+      out1 = f1 <$> nums ⊛ nums
+      filt1 = filter (≟2020 ∘ proj₁) out1
+      f2 x y z = (x + y + z , x * y * z)
+      out2 = f2 <$> nums ⊛ nums ⊛ nums
+      filt2 = filter (≟2020 ∘ proj₁) out2
+
+  _ ← mapM' (putStrLn ∘ show ∘ proj₂) filt1
+  mapM' (putStrLn ∘ show ∘ proj₂) filt2
+  where
+    open RawApplicative applicative
